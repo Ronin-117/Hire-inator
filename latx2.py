@@ -68,7 +68,7 @@ def compile_latex(tex_filename):
 # --- Main execution block ---
 if __name__ == "__main__":
     # Specify the name of the .tex file you want to compile
-    file_to_compile = "main.tex"
+    file_to_compile = "resume_from_gemini.tex"
 
     # Run the compilation function
     compile_latex(file_to_compile)
