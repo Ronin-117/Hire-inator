@@ -1,0 +1,176 @@
+\documentclass[letterpaper,10pt]{article}
+
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage[default]{sourcesanspro}
+\usepackage[T1]{fontenc}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\usepackage{ragged2e}
+
+\pagestyle{empty}
+
+\addtolength{\oddsidemargin}{-0.6in}
+\addtolength{\evensidemargin}{-0.6in}
+\addtolength{\textwidth}{1.2in}
+\addtolength{\topmargin}{-0.6in}
+\addtolength{\textheight}{1.2in}
+
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+\titleformat{\section}{
+  \vspace{-10pt}\scshape\Large\raggedright
+}{}{0em}{}[\color{black}\titlerule\vspace{-5pt}]
+
+\newcommand{\resumeItem}[1]{\item\small{#1\vspace{-2pt}}}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & \textit{\small#2} \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-5pt}
+}
+
+\newcommand{\resumeProjectHeading}[3]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textbf{#1} \href{#2}{\small[GitHub]} & \textit{\small#3} \\
+    \end{tabular*}\vspace{-2pt}
+}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}[leftmargin=0.15in, itemsep=-3pt, topsep=0pt]}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+\hypersetup{
+    colorlinks,
+    linkcolor={blue!60!black},
+    citecolor={blue!60!black},
+    urlcolor={blue!60!black}
+}
+
+\newcommand{\linkline}{\noindent\makebox[\linewidth]{\color{black}\hrulefill}}
+
+\begin{document}
+
+\begin{center}
+    {\Huge \scshape \textbf{NEIL JOSEPH}} \\ \vspace{5pt}
+    \linkline \\ \vspace{4pt}
+    \small Kerala, India $|$ +91 9846604053 $|$ \href{mailto:neiljoseph0117@gmail.com}{\texttt{neiljoseph0117@gmail.com}} $|$ \href{https://www.linkedin.com/in/neil--joseph/}{LinkedIn} $|$ \href{https://github.com/Ronin-117}{GitHub} \\ \vspace{4pt}
+    \linkline
+\end{center}
+
+\begin{center}
+    \begin{tabular*}{\textwidth}{@{}p{\textwidth}@{}}
+    \small\justifying Highly analytical and data-driven Computer Science undergraduate passionate about leveraging insights to solve complex business problems. Proven ability in applying machine learning and statistical techniques to extract actionable intelligence from data. Eager to contribute strong analytical, problem-solving, and client communication skills as a Trainee Data Analyst at MathCo.inc, driving significant outcomes through data-informed strategies.
+    \end{tabular*}
+\end{center}
+
+\section{Education}
+\resumeSubHeadingListStart
+    \resumeSubheading
+    {Adi Shankara Institute of Engineering and Technology, Kalady}{2022 -- 2026}
+    {B.Tech in Computer Science \& Engineering (Artificial Intelligence)}{CGPA: 9.0 / 10.0}
+    \resumeSubheading
+    {St. Sebastian's HSS, Palluruthy}{2020 -- 2022}
+    {Higher Secondary Education (Computer Science)}{Percentage: 94.75\%}
+\resumeSubHeadingListEnd
+
+\section{Core Competencies \& Technical Skills}
+\begin{tabular*}{\textwidth}{@{}p{0.5\textwidth}p{0.5\textwidth}}
+    \begin{itemize}[leftmargin=0.15in, label={$\bullet$}, itemsep=0pt]
+        \item \textbf{Programming \& Databases:} Python (Pandas, NumPy, Scikit-learn), SQL, C++, Java
+        \item \textbf{Data Analysis \& Visualization:} Excel, Power BI, Tableau, Statistical Analysis, Data Cleaning
+        \item \textbf{ML/AI Frameworks:} TensorFlow, PyTorch, LangChain, OpenCV
+    \end{itemize} &
+    \begin{itemize}[leftmargin=0.15in, label={$\bullet$}, itemsep=0pt]
+        \item \textbf{Cloud \& Tools:} AWS, Git, Django, React.js
+        \item \textbf{Core Competencies:} Data-driven Decision Making, Analytical Problem-Solving, Client Communication, Project Management
+    \end{itemize}
+\end{tabular*}
+
+\section{Experience}
+\resumeSubHeadingListStart
+    \resumeSubheading
+    {Jorim Technology Solutions Pvt Ltd}{Chennai, TN}
+    {AI Web Development Intern}{May 2025 -- July 2025}
+    \resumeItemListStart
+        \resumeItem{Led the development of a full-stack, AI-integrated web application for healthcare, focusing on data collection and insights to address critical challenges, showcasing end-to-end project ownership.}
+        \resumeItem{Engineered scalable features with Django and React.js, ensuring robust data flow and responsive user interfaces for analytical functionalities.}
+    \resumeItemListEnd
+
+    \resumeSubheading
+    {InternsChoice}{Bengaluru, KA}
+    {AI \& ML Intern}{Mar 2023 -- Apr 2023}
+    \resumeItemListStart
+        \resumeItem{Utilized machine learning and statistical methods to analyze data and develop practical business solutions, including an image classifier and a customer service chatbot.}
+        \resumeItem{Automated key operational processes and improved efficiency by leveraging data-driven AI solutions, leading to measurable business impact.}
+    \resumeItemListEnd
+\resumeSubHeadingListEnd
+
+\section{Projects}
+\resumeSubHeadingListStart
+    \resumeProjectHeading
+        {CerebroMark: Automated Attendance Monitoring System}
+        {https://github.com/Ronin-117/Automated_attendance}
+        {Pytorch, OpenCV, Python}
+    \resumeItemListStart
+        \resumeItem{Developed an AI-driven facial recognition system for automated attendance, meticulously collecting and analyzing image data to achieve \textbf{98.9\% accuracy} across diverse conditions.}
+    \end{itemize}
+
+    \resumeProjectHeading
+        {GrindSensAI: AI-Based Physical Training \& Progress Tracker}
+        {https://github.com/Ronin-117/GrindSensAI}
+        {Django, React, MediaPipe}
+    \resumeItemListStart
+        \resumeItem{Designed a data-driven fitness application leveraging computer vision to analyze user movements, providing real-time form correction and detailed progress tracking for \textbf{over 10 distinct exercises} based on performance metrics.}
+    \end{itemize}
+    
+    \resumeProjectHeading
+        {Oratis: AI-Powered Interview Preparation Platform}
+        {https://github.com/Ronin-117/Mock_Online_InterviewAi}
+        {NLP, Computer Vision, API}
+    \resumeItemListStart
+        \resumeItem{Developed an analytical platform for interview preparation, utilizing AI to assess candidate performance data and provide data-backed constructive feedback for improvement.}
+    \end{itemize}
+    
+    \resumeProjectHeading
+        {Voxia: Sustainable Project Management Tool using IBM WatsonX}
+        {https://github.com/Ronin-117/sustainability-tool}
+        {IBM WatsonX, LangChain, API}
+    \resumeItemListStart
+        \resumeItem{Designed a proof-of-concept leveraging IBM watsonx for sustainable project management, enabling businesses to analyze and assess project sustainability data for GRC compliance and strategic decision-making.}
+    \end{itemize}
+    
+    \resumeProjectHeading
+        {Custom AI Assistant with RAG}
+        {https://github.com/Ronin-117/lang_chain_test}
+        {LangChain, NLP, Python}
+    \resumeItemListStart
+        \resumeItem{Architected a Retrieval-Augmented Generation (RAG) system, efficiently managing and querying a specialized knowledge base to deliver accurate, data-driven, context-aware responses, essential for enterprise AI solutions.}
+    \end{itemize}
+\resumeSubHeadingListEnd
+
+\section{Achievements \& Publications}
+\resumeSubHeadingListStart
+    \resumeItem{\textbf{Secured a Top 10 Finalist position in the IBM watsonx Challenge} for developing "Voxia," an innovative sustainable project management tool at the inaugural IBM Kochi competition.}
+    \resumeItem{\textbf{Published Research Paper:} "Oratis: AI Guide to Ace interviews" - Co-authored paper presented at the International Conference on Innovations in Mechanical, Robotics, Computing, and Biomedical Engineering (April 2025).}
+    \resumeItem{\textbf{Certifications:}}
+    \resumeItemListStart
+        \resumeItem{Google Data Analytics Professional Certificate (Coursera)[\href{https://example.com/google-data-analytics}{Certificate}]}
+        \resumeItem{Microsoft Certified: Power BI Data Analyst Associate (Microsoft)[\href{https://example.com/microsoft-powerbi}{Certificate}]}
+        \resumeItem{SQL for Data Science (Coursera - IBM)[\href{https://example.com/sql-for-datascience}{Certificate}]}
+        \resumeItem{AWS AI Cloud Practitioner (Udemy)[\href{https://drive.google.com/file/d/1hyq1dbVjAA1MLuaTsM54wPWLVKikRFmg/view?usp=sharing}{Certificate}]}
+        \resumeItem{IBM watsonx.ai Technical Essentials (IBM)[\href{https://drive.google.com/file/d/1jE_tHyAmTK9e3APr32Q-aovg3wDvVlDL/view?usp=sharing}{Certificate}]}
+    \resumeItemListEnd
+\resumeSubHeadingListEnd
+
+\end{document}
