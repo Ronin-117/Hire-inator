@@ -4,6 +4,7 @@ import { Link, Navigate, Route, BrowserRouter as Router, Routes } from 'react-ro
 import { auth } from './firebaseConfig';
 import LoginPage from './LoginPage';
 import ProfilePage from './ProfilePage'; // Import the new ProfilePage
+import UploadPage from './UploadPage';
 
 // A new component for our main dashboard content
 const Dashboard = () => (
@@ -12,7 +13,7 @@ const Dashboard = () => (
         <nav>
             <Link to="/profile"><button>Go to Profile</button></Link>
             {/* Add links for other buttons later */}
-            <button>Upload Resume</button>
+            <Link to="/upload"><button>Upload Resume</button></Link>
             <button>Tailor Resume</button>
         </nav>
     </div>
@@ -51,6 +52,7 @@ function App() {
                     <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" />} />
                     <Route path="/profile" element={user ? <ProfilePage /> : <Navigate to="/login" />} />
                     <Route path="/" element={user ? <Dashboard /> : <Navigate to="/login" />} />
+                    <Route path="/upload" element={user ? <UploadPage /> : <Navigate to="/login" />} />
                 </Routes>
             </div>
         </Router>

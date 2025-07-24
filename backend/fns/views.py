@@ -1,4 +1,7 @@
 from django.shortcuts import render
+from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+
 
 # Create your views here.
 # fns/views.py
@@ -6,6 +9,12 @@ from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from firebase_admin import firestore # Import firestore
 from .decorators import firebase_auth_required
+
+# Imports for Gemini
+from google import genai
+from google.genai import types
+from pydantic import BaseModel
+from datetime import datetime
 
 def home(request):
     return HttpResponse("<h1>Welcome! Go to /test-firebase to write to the database.</h1>")
@@ -47,3 +56,151 @@ def get_user_profile(request):
         # We can also return the full token data for debugging
         "user_data": request.firebase_user 
     })
+
+
+def convert_pdf_to_latex(pdf_bytes):
+    """
+    Converts PDF bytes to a LaTeX string using the Gemini API,
+    following the original working script's logic.
+    """
+    # This is your Pydantic model for the response structure
+    class Res(BaseModel):
+        ai_response: str
+        resume_tex: str
+
+    # --- THE FIX ---
+    # The incorrect 'genai.configure(...)' line has been removed.
+    # We now initialize the client directly with the API key,
+    # just like in your working standalone script.
+    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    
+    prompt = (
+        "Analyze the provided PDF resume and convert it into a complete, single, and compilable "
+        "LaTeX document. \n\n"
+        "Instructions:\n"
+        "1. Use the 'article' document class.\n"
+        "2. Use the 'geometry' package for appropriate margins (e.g., `\\usepackage[a4paper, margin=1in]{geometry}`).\n"
+        "3. Preserve the sections, layout, and text formatting (like bold or itemized lists) as closely as possible.\n"
+        "4. The entire output in the 'resume_tex' field must be a single raw string of LaTeX code, "
+        "starting with `\\documentclass` and ending with `\\end{document}`."
+    )
+
+    # This is the exact, working API call from your original script
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=[
+            types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf'),
+            prompt
+        ],
+        config={
+            "response_mime_type": "application/json",
+            "response_schema": Res,
+        },
+    )
+    
+    parsed_response: Res = response.parsed
+    return parsed_response.resume_tex
+
+
+# --- The Django View (No changes needed here) ---
+@csrf_exempt
+@firebase_auth_required
+def upload_resume_view(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST method is allowed'}, status=405)
+
+    if 'resume_pdf' not in request.FILES:
+        return JsonResponse({'error': 'No PDF file found in request'}, status=400)
+
+    uploaded_file = request.FILES['resume_pdf']
+    user_uid = request.user_id
+
+     # STEP 2: Get the custom resume name from the POST data.
+    # request.POST contains text data sent along with files in FormData.
+    resume_name = request.POST.get('resume_name', '').strip()
+
+    # STEP 3: If the name is empty, create a default one.
+    if not resume_name:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        resume_name = f"Resume {timestamp}"
+
+    try:
+        print(f"Processing '{uploaded_file.name}' for user {user_uid}...")
+        pdf_bytes = uploaded_file.read()
+        
+        print("Sending to Gemini for conversion...")
+        latex_code = convert_pdf_to_latex(pdf_bytes)
+        print("Conversion successful.")
+
+        print("Saving to Firestore...")
+        db = firestore.client()
+        resume_data = {
+            'userId': user_uid,
+            'resumeName': resume_name, 
+            'originalFilename': uploaded_file.name,
+            'latexContent': latex_code,
+            'createdAt': firestore.SERVER_TIMESTAMP,
+            'lastUpdated': firestore.SERVER_TIMESTAMP,
+        }
+        
+        doc_ref = db.collection('resumes').add(resume_data)
+        
+        print(f"Resume saved with ID: {doc_ref[1].id}")
+
+        return JsonResponse({
+            'status': 'success', 
+            'message': 'Resume converted and saved successfully!',
+            'resumeId': doc_ref[1].id
+        })
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+    
+@csrf_exempt
+@firebase_auth_required
+def upload_tex_view(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST method is allowed'}, status=405)
+
+    if 'resume_tex' not in request.FILES:
+        return JsonResponse({'error': 'No .tex file found in request'}, status=400)
+
+    uploaded_file = request.FILES['resume_tex']
+    user_uid = request.user_id
+    
+    # Use the same logic for getting the custom name
+    resume_name = request.POST.get('resume_name', '').strip()
+    if not resume_name:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        resume_name = f"Imported Resume {timestamp}"
+
+    try:
+        # Read the content of the .tex file. It's bytes, so we decode it.
+        latex_content = uploaded_file.read().decode('utf-8')
+
+        print(f"Saving uploaded .tex file to Firestore with name: '{resume_name}'")
+        db = firestore.client()
+        
+        resume_data = {
+            'userId': user_uid,
+            'resumeName': resume_name,
+            'originalFilename': uploaded_file.name,
+            'latexContent': latex_content,
+            'createdAt': firestore.SERVER_TIMESTAMP,
+            'lastUpdated': firestore.SERVER_TIMESTAMP,
+        }
+        
+        doc_ref = db.collection('resumes').add(resume_data)
+        
+        return JsonResponse({
+            'status': 'success', 
+            'message': 'TeX file saved successfully!',
+            'resumeId': doc_ref[1].id
+        })
+
+    except UnicodeDecodeError:
+        return JsonResponse({'error': 'Could not read the file. Please ensure it is a valid UTF-8 encoded text file.'}, status=400)
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
