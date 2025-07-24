@@ -1,24 +1,25 @@
-// src/ProfilePage.jsx (Fetches real resumes)
+// src/ProfilePage.jsx (Complete Code)
 
-import { collection, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, orderBy, query, setDoc, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { auth, db } from './firebaseConfig';
 
 const ProfilePage = () => {
-    // --- State variables (no changes here) ---
+    // --- UI State ---
     const [isEditing, setIsEditing] = useState(false);
     const [loadingProfile, setLoadingProfile] = useState(true);
-    const [loadingResumes, setLoadingResumes] = useState(true); // <-- Separate loading for resumes
+    const [loadingResumes, setLoadingResumes] = useState(true);
+    const [downloadingId, setDownloadingId] = useState(null); // To show loading state on a specific download button
     const [error, setError] = useState(null);
     const [statusMessage, setStatusMessage] = useState('');
+
+    // --- Data State ---
     const [profileData, setProfileData] = useState({ displayName: '', customInstructions: '' });
     const [formData, setFormData] = useState({ displayName: '', customInstructions: '' });
-    
-    // --- NEW: State for the REAL resume list ---
-    const [resumes, setResumes] = useState([]); // Will hold data from Firestore
+    const [resumes, setResumes] = useState([]);
 
-    // --- useEffect to fetch all data on component load ---
+    // --- Data Fetching Effect ---
     useEffect(() => {
         if (!auth.currentUser) {
             setLoadingProfile(false);
@@ -26,7 +27,7 @@ const ProfilePage = () => {
             return;
         }
 
-        // --- 1. Fetch User Profile Data (no changes to this part) ---
+        // 1. Fetch User Profile Data
         const fetchUserData = async () => {
             const userDocRef = doc(db, 'users', auth.currentUser.uid);
             try {
@@ -40,7 +41,12 @@ const ProfilePage = () => {
                     setProfileData(fetchedData);
                     setFormData(fetchedData);
                 } else {
-                    setFormData({ displayName: auth.currentUser.displayName || '', customInstructions: '' });
+                    const defaultData = {
+                        displayName: auth.currentUser.displayName || '',
+                        customInstructions: '',
+                    };
+                    setProfileData(defaultData);
+                    setFormData(defaultData);
                 }
             } catch (err) {
                 setError("Could not fetch profile data.");
@@ -49,36 +55,20 @@ const ProfilePage = () => {
             setLoadingProfile(false);
         };
 
-        // --- 2. NEW: Fetch User's Resumes ---
+        // 2. Fetch User's Resumes
         const fetchResumes = async () => {
             try {
-                // Create a reference to the 'resumes' collection
                 const resumesCollectionRef = collection(db, 'resumes');
-
-                // Create a query against the collection
                 const q = query(
-                    resumesCollectionRef, 
-                    where("userId", "==", auth.currentUser.uid), // Filter by the logged-in user's ID
-                    orderBy("createdAt", "desc") // Show the newest resumes first
+                    resumesCollectionRef,
+                    where("userId", "==", auth.currentUser.uid),
+                    orderBy("createdAt", "desc")
                 );
-
-                // Execute the query
                 const querySnapshot = await getDocs(q);
-
-                // Map the results to an array
-                const userResumes = [];
-                querySnapshot.forEach((doc) => {
-                    userResumes.push({ 
-                        id: doc.id, // The unique document ID
-                        ...doc.data() // The rest of the data (resumeName, createdAt, etc.)
-                    });
-                });
-
+                const userResumes = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setResumes(userResumes);
-                console.log("Fetched resumes:", userResumes);
-
             } catch (err) {
-                setError("Could not fetch resumes.");
+                setError("Could not fetch resumes. You may need to create a Firestore index. Check the browser console (F12) for a link.");
                 console.error("Fetch resumes error:", err);
             }
             setLoadingResumes(false);
@@ -86,21 +76,111 @@ const ProfilePage = () => {
 
         fetchUserData();
         fetchResumes();
+    }, []);
 
-    }, []); // Empty dependency array ensures this runs only once on mount
+    // --- Event Handlers ---
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
 
-    // --- handleSaveProfile and other handlers remain unchanged ---
-    const handleInputChange = (e) => { /* ... */ };
-    const handleSaveProfile = async () => { /* ... */ };
-    const handleCancel = () => { /* ... */ };
+    const handleSaveProfile = async () => {
+        if (!auth.currentUser) return;
+        setStatusMessage("Saving...");
+        const userDocRef = doc(db, 'users', auth.currentUser.uid);
+        try {
+            await setDoc(userDocRef, formData, { merge: true });
+            setProfileData(formData);
+            setIsEditing(false);
+            setStatusMessage("Profile saved successfully!");
+            setTimeout(() => setStatusMessage(''), 3000);
+        } catch (err) {
+            setError("Failed to save profile.");
+            console.error("Save profile error:", err);
+            setStatusMessage('');
+        }
+    };
 
+    const handleCancel = () => {
+        setFormData(profileData);
+        setIsEditing(false);
+    };
+
+    const handleDownloadPdf = async (resumeId, resumeName) => {
+        if (!auth.currentUser) return;
+        setDownloadingId(resumeId);
+        setError(null);
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const response = await fetch(`http://127.0.0.1:8000/api/resumes/${resumeId}/download/`, {
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + token },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to download PDF.');
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${resumeName || 'resume'}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error("Download failed:", err);
+            setError(err.message);
+        } finally {
+            setDownloadingId(null);
+        }
+    };
+
+    const isLoading = loadingProfile || loadingResumes;
+    if (isLoading) return <h1>Loading Profile...</h1>;
 
     return (
         <div>
             <Link to="/">← Back to Dashboard</Link>
             <h1>My Profile</h1>
-            {/* ... error/status messages and profile edit form are unchanged ... */}
-            
+
+            {error && <p style={{ color: 'red' }}>{error}</p>}
+            {statusMessage && <p style={{ color: 'blue' }}>{statusMessage}</p>}
+
+            <div style={{ border: '1px solid #ddd', padding: '15px', borderRadius: '5px', marginBottom: '20px' }}>
+                <h3>User Details</h3>
+                <div style={{ marginBottom: '10px' }}>
+                    <label>
+                        Display Name:
+                        <input
+                            type="text" name="displayName" value={formData.displayName}
+                            onChange={handleInputChange} disabled={!isEditing}
+                        />
+                    </label>
+                </div>
+                <div>
+                    <h3>AI Custom Instructions</h3>
+                    <textarea
+                        name="customInstructions" rows="4" cols="50"
+                        value={formData.customInstructions} onChange={handleInputChange}
+                        disabled={!isEditing} placeholder="Enter instructions for the AI..."
+                    />
+                </div>
+                <div style={{ marginTop: '10px' }}>
+                    {isEditing ? (
+                        <>
+                            <button onClick={handleSaveProfile}>Save Changes</button>
+                            <button onClick={handleCancel} style={{ marginLeft: '10px' }}>Cancel</button>
+                        </>
+                    ) : (
+                        <button onClick={() => setIsEditing(true)}>Edit Profile</button>
+                    )}
+                </div>
+            </div>
+
             <hr />
 
             <h3>My Resumes</h3>
@@ -109,17 +189,25 @@ const ProfilePage = () => {
             ) : resumes.length > 0 ? (
                 <ul style={{ listStyle: 'none', padding: 0 }}>
                     {resumes.map(resume => (
-                        <li key={resume.id} style={{ border: '1px solid #ccc', padding: '10px', marginBottom: '5px' }}>
-                            <strong>{resume.resumeName}</strong>
-                            <br />
-                            <small>
-                                Created: {resume.createdAt ? resume.createdAt.toDate().toLocaleDateString() : 'N/A'}
-                            </small>
-                            <br />
-                            {/* We will add functionality to these buttons later */}
-                            <button>View/Edit</button>
-                            <button>Download PDF</button>
-                            <button style={{color: 'red'}}>Delete</button>
+                        <li key={resume.id} style={{ border: '1px solid #ccc', padding: '10px', marginBottom: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <strong>{resume.resumeName}</strong>
+                                <br />
+                                <small>
+                                    Last Updated: {resume.lastUpdated ? resume.lastUpdated.toDate().toLocaleDateString() : 'N/A'}
+                                </small>
+                            </div>
+                            <div>
+                                <button style={{ marginRight: '5px' }}>View/Edit</button>
+                                <button
+                                    style={{ marginRight: '5px' }}
+                                    onClick={() => handleDownloadPdf(resume.id, resume.resumeName)}
+                                    disabled={downloadingId === resume.id}
+                                >
+                                    {downloadingId === resume.id ? 'Compiling...' : 'Download PDF'}
+                                </button>
+                                <button style={{ color: 'red' }}>Delete</button>
+                            </div>
                         </li>
                     ))}
                 </ul>

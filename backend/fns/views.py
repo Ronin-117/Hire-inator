@@ -15,6 +15,9 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel
 from datetime import datetime
+import subprocess # For running external commands
+import os         # For path manipulation
+import tempfile   # For creating temporary directories
 
 def home(request):
     return HttpResponse("<h1>Welcome! Go to /test-firebase to write to the database.</h1>")
@@ -204,3 +207,89 @@ def upload_tex_view(request):
     except Exception as e:
         print(f"An error occurred: {e}")
         return JsonResponse({'error': str(e)}, status=500)
+    
+# --- ADD THIS NEW HELPER FUNCTION ---
+def compile_latex_to_pdf_bytes(latex_content: str):
+    """
+    Takes a string of LaTeX content, compiles it in a temporary directory,
+    and returns the binary content of the resulting PDF.
+    Returns None if compilation fails.
+    """
+    # Create a temporary directory that will be automatically cleaned up
+    with tempfile.TemporaryDirectory() as tempdir:
+        tex_filename = "resume.tex"
+        tex_filepath = os.path.join(tempdir, tex_filename)
+        pdf_filepath = os.path.join(tempdir, "resume.pdf")
+
+        # 1. Write the LaTeX content to the .tex file
+        with open(tex_filepath, "w", encoding="utf-8") as f:
+            f.write(latex_content)
+
+        # 2. The command to run pdflatex
+        command = [
+            "pdflatex",
+            "-interaction=nonstopmode",
+            f"-output-directory={tempdir}", # Ensure output is in the same temp dir
+            tex_filepath,
+        ]
+
+        try:
+            # 3. Run the compiler command. We run it twice for complex docs (e.g., table of contents)
+            # which is good practice.
+            for i in range(2):
+                print(f"Running pdflatex pass {i+1}...")
+                subprocess.run(command, check=True, capture_output=True, text=True)
+
+            # 4. If compilation was successful, read the PDF bytes
+            if os.path.exists(pdf_filepath):
+                with open(pdf_filepath, "rb") as f:
+                    pdf_bytes = f.read()
+                print("PDF compilation successful.")
+                return pdf_bytes
+            else:
+                return None
+
+        except subprocess.CalledProcessError as e:
+            print(f"❌ PDF Compilation Failed!")
+            print(e.stdout) # Print the LaTeX log for debugging
+            return None
+        
+@csrf_exempt
+@firebase_auth_required
+def download_resume_pdf_view(request, resume_id: str):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Only GET method is allowed'}, status=405)
+
+    user_uid = request.user_id
+    db = firestore.client()
+
+    try:
+        # 1. Fetch the resume document from Firestore
+        resume_ref = db.collection('resumes').document(resume_id)
+        resume_doc = resume_ref.get()
+
+        if not resume_doc.exists:
+            return JsonResponse({'error': 'Resume not found'}, status=404)
+
+        resume_data = resume_doc.to_dict()
+
+        # 2. SECURITY CHECK: Ensure the user owns this resume
+        if resume_data.get('userId') != user_uid:
+            return JsonResponse({'error': 'Permission denied'}, status=403)
+
+        # 3. Get the LaTeX content and compile it
+        latex_content = resume_data.get('latexContent')
+        pdf_bytes = compile_latex_to_pdf_bytes(latex_content)
+
+        if pdf_bytes:
+            # 4. If compilation is successful, create the HTTP response
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            # This header tells the browser to download the file
+            response['Content-Disposition'] = f'attachment; filename="{resume_data.get("resumeName", "resume")}.pdf"'
+            return response
+        else:
+            return JsonResponse({'error': 'Failed to compile LaTeX into PDF.'}, status=500)
+
+    except Exception as e:
+        print(f"An error occurred during PDF download: {e}")
+        return JsonResponse({'error': 'An internal server error occurred.'}, status=500)
