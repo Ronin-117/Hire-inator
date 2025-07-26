@@ -17,3 +17,12 @@ class FnsConfig(AppConfig):
             cred = credentials.Certificate(key_path)
             firebase_admin.initialize_app(cred)
             print("🔥 Firebase App Initialized for Token Verification 🔥")
+        try:
+            print("🧠 Downloading NLTK resources for Humanizer...")
+            from transformer.app import download_nltk_resources
+            download_nltk_resources()
+            print("✅ NLTK resources are ready.")
+        except ImportError:
+            print("⚠️ WARNING: 'transformer.app' library not found. Humanizer will not work.")
+        except Exception as e:
+            print(f"❌ ERROR downloading NLTK resources: {e}")

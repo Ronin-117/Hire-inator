@@ -1,59 +1,68 @@
-# File: process_resume_chunked.py
+# File: process_resume_template_method.py
 
 import os
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
-from typing import List
-from humanize_ai_text import HumanizedAI
+from typing import List, Dict
+from transformer.app import AcademicTextHumanizer, download_nltk_resources
 
 # --- 1. SETUP AND CONFIGURATION ---
 print("🚀 Initializing...")
 load_dotenv()
 
+#----HUMANIZER CONFIG____#
+download_nltk_resources()
+humanizer = AcademicTextHumanizer(
+        p_passive=0.3,
+        p_synonym_replacement=0.3,
+        p_academic_transition=0.4
+    )
+
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-HUMANIZED_AI_KEY = os.environ.get("HUMANIZED_AI")
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY must be set in the .env file.")
 
-if not GEMINI_API_KEY or not HUMANIZED_AI_KEY:
-    raise ValueError("API keys for Gemini and HumanizedAI must be set in the .env file.")
-
-# Initialize clients for both services
 gemini_client = genai.Client(api_key=GEMINI_API_KEY)
-humanizer = HumanizedAI(api_key=HUMANIZED_AI_KEY)
 
-# --- 2. PYDANTIC MODELS FOR STRUCTURED GEMINI RESPONSES ---
+# --- 2. PYDANTIC MODELS FOR THE NEW STRUCTURED RESPONSE ---
 
-class TailoredResume(BaseModel):
-    """Schema for the tailored resume response."""
-    updated_latex: str
+class ContentChunk(BaseModel):
+    """Schema for a single passage of generated content."""
+    title: str = Field(description="A unique key for the placeholder (e.g., 'summary_section', 'experience_tech_solutions').")
+    content: str = Field(description="The generated text content for this section.")
 
-class TextChunk(BaseModel):
-    """Schema for a single text chunk."""
-    section_title: str = Field(description="The title of the section (e.g., 'Summary', 'Experience').")
-    section_content: str = Field(description="The raw text content of that section.")
-
-class ExtractedTextChunks(BaseModel):
-    """Schema for the list of all chunks."""
-    resume_chunks: List[TextChunk]
-
-class StitchedResume(BaseModel):
-    """Schema for the re-integrated resume response."""
-    final_latex: str
+class TailoredResumeResponse(BaseModel):
+    """
+    Schema for the main Gemini response, containing both the template
+    and the content chunks to be inserted.
+    """
+    latex_template: str = Field(description="The full LaTeX document with f-string like placeholders (e.g., {summary_section}).")
+    content_chunks: List[ContentChunk] = Field(description="A list of all the content chunks to be humanized and inserted into the template.")
 
 # --- 3. HELPER FUNCTIONS ---
 
-def tailor_resume_with_gemini(base_latex, job_desc, instructions):
-    """Uses Gemini to modify the LaTeX resume based on inputs."""
-    print("\n🤖 Sending request to Gemini for tailoring...")
+def get_tailored_template_and_chunks(base_latex, job_desc, instructions):
+    """
+    Uses Gemini to generate both a LaTeX template with placeholders
+    and the content for those placeholders.
+    """
+    print("\n🤖 Sending request to Gemini for template and content generation...")
+    
     prompt = f"""
-    You are an expert resume editor. Update the Base LaTeX Resume based on the Job Description and User Instructions.
-    Preserve the LaTeX structure. Only modify content to align with the role. Respond with the complete, updated LaTeX code.
+    You are an expert resume editor. Your task is to update the 'BASE LATEX RESUME' based on the provided 'JOB DESCRIPTION' and 'USER INSTRUCTIONS'.Try to make the content in the resume more human like(dont need to use complex language , just simple english).
+
+    Your response MUST be in two parts:
+    1.  `latex_template`: A complete LaTeX document that preserves the original structure and formatting. For any long-form text or paragraph (like a summary or a job description bullet point), you MUST replace the text with a unique placeholder in the format `{{placeholder_key}}`. For example, `\section*{{Summary}} \n {{summary_section}}`. The bullet points for each job experience should be rewritten to sound natural and human, tailored to the job description.
+    2.  `content_chunks`: A list of JSON objects. Each object must contain two keys: `title` (the exact `placeholder_key` used in the template) and `content` (the detailed, AI-generated paragraph or text that should go into that placeholder).
 
     --- BASE LATEX RESUME ---
     {base_latex}
+
     --- JOB DESCRIPTION ---
     {job_desc}
+
     --- USER INSTRUCTIONS ---
     {instructions}
     """
@@ -63,106 +72,78 @@ def tailor_resume_with_gemini(base_latex, job_desc, instructions):
             contents=[prompt],
             config={
                 "response_mime_type": "application/json",
-                "response_schema": TailoredResume,
+                "response_schema": TailoredResumeResponse,
             },
         )
-        print("✅ Gemini tailoring complete.")
-        return response.parsed.updated_latex
+        print("✅ Gemini processing complete.")
+        return response.parsed
     except Exception as e:
-        print(f"❌ Gemini Tailoring Error: {e}")
+        print(f"❌ Gemini API Error: {e}")
         return None
 
-def extract_text_chunks(latex_content):
-    """Uses Gemini to extract structured text chunks from LaTeX."""
-    print("\n extracting structured text chunks from LaTeX...")
-    prompt = f"""
-    From the following LaTeX document, extract the human-readable text content, broken down by section.
-    For each section (like Summary, Experience, Education), provide its title and its full text content.
-    Ignore all LaTeX commands, environments, and document setup.
-    Present the result as a list of JSON objects, each with a 'section_title' and a 'section_content' key.
-
-    --- LATEX DOCUMENT ---
-    {latex_content}
+def humanize_content(chunks: List[ContentChunk]) -> Dict[str, str]:
     """
-    try:
-        response = gemini_client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[prompt],
-            config={
-                "response_mime_type": "application/json",
-                "response_schema": ExtractedTextChunks,
-            },
-        )
-        print("✅ Text chunk extraction complete.")
-        return response.parsed.resume_chunks
-    except Exception as e:
-        print(f"❌ Text Chunk Extraction Error: {e}")
-        return None
-
-def humanize_text(text_to_humanize):
-    """Runs the text through the HumanizedAI service."""
-    print(f"🗣️ Sending chunk to HumanizeAI (length: {len(text_to_humanize)} chars)...")
-    try:
-        result = humanizer.run(text_to_humanize)
-        print("✅ Humanization of chunk complete.")
-        return result['humanizedText']
-    except Exception as e:
-        print(f"❌ HumanizeAI Error: {e}")
-        return None
-
-def reintegrate_chunks_with_gemini(original_latex, humanized_chunks: List[TextChunk]):
-    """Uses Gemini to put the humanized chunks back into the LaTeX structure."""
-    print("\n🧩 Sending request to Gemini for chunk re-integration...")
-    
-    humanized_content_str = ""
-    for chunk in humanized_chunks:
-        humanized_content_str += f"--- SECTION: {chunk.section_title} ---\n{chunk.section_content}\n\n"
-
-    prompt = f"""
-    You are a precise text-stitching tool. Your task is to take an original LaTeX document and a series of humanized text chunks, identified by section titles. You must replace the content within each corresponding section of the LaTeX structure with the new humanized text.
-
-    CRITICAL RULE: Do NOT add, remove, or generate any new content. Do NOT change the LaTeX commands or structure. Simply replace the original text sections with their corresponding humanized versions.
-
-    --- ORIGINAL LATEX STRUCTURE ---
-    {original_latex}
-
-    --- HUMANIZED TEXT CHUNKS ---
-    {humanized_content_str}
-    
-    --- FINAL STITCHED LATEX DOCUMENT ---
+    A dummy function that simulates humanizing text.
+    In this version, it just appends "[humanized]" to the content.
+    It returns a dictionary for easy lookup.
     """
-    try:
-        response = gemini_client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[prompt],
-            config={
-                "response_mime_type": "application/json",
-                "response_schema": StitchedResume,
-            },
-        )
-        print("✅ Re-integration complete.")
-        return response.parsed.final_latex
-    except Exception as e:
-        print(f"❌ Gemini Re-integration Error: {e}")
-        return None
+    print("\n⚙️ Running dummy humanization process on all chunks...")
+    humanized_map = {}
+    for chunk in chunks:
+        # Replace this line with a real humanizer call if you get one working later
+        humanized_text = humanizer.humanize_text(
+                            chunk.content,
+                            use_passive=True,
+                            use_synonyms=True
+                        ) + "[HUMANIZED]"
+        humanized_map[chunk.title] = humanized_text
+        print(f"  - Humanized '{chunk.title}'")
+    
+    print("✅ Dummy humanization complete.")
+    return humanized_map
+
+def populate_template(template: str, content_map: Dict[str, str]) -> str:
+    """
+    Populates the LaTeX template by directly replacing placeholder keys
+    with their corresponding content.
+    """
+    print("\n🧩 Stitching humanized content into the final template...")
+    
+    final_latex = template
+    
+    # Loop through the map of content we need to insert
+    for placeholder_key, content in content_map.items():
+        # Create the placeholder format, e.g., "{summary_section}"
+        placeholder_to_find = "{" + placeholder_key + "}"
+        
+        if placeholder_to_find in final_latex:
+            # Directly replace the placeholder with the content
+            final_latex = final_latex.replace(placeholder_to_find, content)
+        else:
+            # This is an important warning for debugging
+            print(f"⚠️ WARNING: Placeholder '{placeholder_to_find}' not found in the template. Skipping.")
+            
+    print("✅ Stitching complete.")
+    return final_latex
 
 # --- 4. SAMPLE DATA ---
+# Using your provided sample data
 BASE_RESUME_LATEX = r"""
 \documentclass[letterpaper,10pt]{article}
 
 \usepackage[empty]{fullpage}
 \usepackage{titlesec}
-\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage[usenames,dvipsnames]{xcolor} % <<< FIX 1: Using xcolor for advanced color mixing
 \usepackage{enumitem}
 \usepackage[hidelinks]{hyperref}
 \usepackage[default]{sourcesanspro}
 \usepackage[T1]{fontenc}
 \usepackage{tabularx}
 \usepackage{graphicx}
-\usepackage{ragged2e}
+\usepackage{ragged2e} % For the \justifying command
 
 % ------ RESUME STYLING ------
-\pagestyle{empty}
+\pagestyle{empty} % No headers or footers
 
 % Adjust margins for one-page fit
 \addtolength{\oddsidemargin}{-0.6in}
@@ -230,9 +211,8 @@ BASE_RESUME_LATEX = r"""
 
 % --- SUMMARY ---
 \begin{center}
-    \begin{tabular*}{\textwidth}{@{}p{\textwidth}@{
-}}
-    \small\justifying Highly analytical Computer Science undergraduate passionate about extracting insights from complex datasets to drive strategic business decisions. Proven ability to leverage data-driven solutions and machine learning techniques. Eager to apply strong technical and analytical skills as a Junior Data Analyst at mathco.inc, contributing to impactful data initiatives.
+    \begin{tabular*}{\textwidth}{@{}p{\textwidth}@{}}
+    \small\justifying AI-focused undergraduate studying computer science who is passionate about using data-driven solutions to tackle difficult problems. I have demonstrated success in computer vision and natural language processing while designing and developing machine learning applications. As a Trainee Analyst at TheMathCompany, I aim to use my technical and analytical abilities to produce significant outcomes.
     \end{tabular*}
 \end{center}
 
@@ -252,7 +232,7 @@ BASE_RESUME_LATEX = r"""
 \section{Core Competencies \& Technical Skills}
 \begin{tabular*}{\textwidth}{@{}p{0.5\textwidth}p{0.5\textwidth}}
     \begin{itemize}[leftmargin=0.15in, label={$\bullet$}, itemsep=0pt]
-        \item \textbf{Languages:} SQL, Python, C++, Java, C
+        \item \textbf{Languages:} Python, C++, Java, C, SQL
         \item \textbf{AI/ML Frameworks:} TensorFlow, PyTorch, Scikit-learn
         \item \textbf{NLP \& CV Libraries:} LangChain, CrewAI, OpenCV, MediaPipe
         \item \textbf{Web Technologies:} Django, React.js, HTML, JavaScript
@@ -274,16 +254,16 @@ BASE_RESUME_LATEX = r"""
     {Jorim Technology Solutions Pvt Ltd}{Chennai, TN}
     {AI Web Development Intern}{May 2025 -- July 2025}
     \resumeItemListStart
-        \resumeItem{Led development of a data-driven, AI-integrated web application for healthcare, demonstrating end-to-end project ownership from data collection to deployment.}
-        \resumeItem{Engineered scalable features using Django and React.js, facilitating data visualization and user interaction.}
+        \resumeItem{Developed a full-stack, AI-integrated web application to address a key challenge in the healthcare sector, demonstrating end-to-end project ownership.}
+        \resumeItem{Engineered scalable features using Django for the backend and React.js for the interactive frontend.}
     \resumeItemListEnd
 
     \resumeSubheading
     {InternsChoice}{Bengaluru, KA}
     {AI \& ML Intern}{Mar 2023 -- Apr 2023}
     \resumeItemListStart
-        \resumeItem{Applied data analysis and machine learning techniques to derive insights and build practical business solutions, including an image classifier and customer service chatbot.}
-        \resumeItem{Identified and automated key operational processes using data-driven AI solutions, enhancing efficiency.}
+        \resumeItem{Applied machine learning techniques to build and deploy practical business solutions, including an image classifier and a customer service chatbot.}
+        \resumeItem{Automated key operational processes and improved efficiency by implementing targeted AI solutions.}
     \resumeItemListEnd
 \resumeSubHeadingListEnd
 
@@ -295,132 +275,102 @@ BASE_RESUME_LATEX = r"""
         {https://github.com/Ronin-117/Automated_attendance}
         {Pytorch, OpenCV, Python}
     \resumeItemListStart
-        \resumeItem{Developed a data-driven AI solution for automated classroom attendance (facial recognition), achieving \textbf{98.9\% accuracy} through robust data processing and model optimization.}
-    \end{itemize}
+        \resumeItem{Engineered an AI solution to automate classroom attendance using facial recognition, achieving \textbf{98.9\% accuracy} even in challenging low-light and varied angle conditions.}
+    \resumeItemListEnd
 
     \resumeProjectHeading
         {GrindSensAI: AI-Based Physical Training \& Progress Tracker}
         {https://github.com/Ronin-117/GrindSensAI}
         {Django, React, MediaPipe}
     \resumeItemListStart
-        \resumeItem{Built a data-driven fitness application leveraging computer vision to collect, analyze, and provide real-time form correction and progress tracking for \textbf{over 10 distinct exercises}, enabling personalized insights.}
-    \end{itemize}
-
+        \resumeItem{Built a data-driven fitness application that leverages computer vision to provide real-time form correction and progress tracking for \textbf{over 10 distinct exercises}.}
+    \resumeItemListEnd
+    
     \resumeProjectHeading
         {Oratis: AI-Powered Interview Preparation Platform}
         {https://github.com/Ronin-117/Mock_Online_InterviewAi}
         {NLP, Computer Vision, API}
     \resumeItemListStart
-        \resumeItem{Developed an analytical tool for placement preparation, processing interview data to provide constructive performance feedback, featuring a 3D AI avatar for mock interviews.}
-    \end{itemize}
-
+        \resumeItem{Developed an analytical tool for placement preparation featuring a 3D AI avatar that conducts mock interviews and provides constructive performance feedback.}
+    \resumeItemListEnd
+    
     \resumeProjectHeading
         {Voxia: Sustainable Project Management Tool using IBM WatsonX}
         {https://github.com/Ronin-117/sustainability-tool}
         {IBM WatsonX, LangChain, API}
     \resumeItemListStart
-        \resumeItem{Designed a proof-of-concept for the IBM watsonx challenge to help businesses assess project sustainability by analyzing relevant data, showcasing ability to leverage enterprise AI for GRC insights.}
-    \end{itemize}
-
+        \resumeItem{Designed a proof-of-concept for the IBM watsonx challenge to help businesses assess project sustainability, showcasing the ability to leverage enterprise-grade AI for GRC.}
+    \resumeItemListEnd
+    
     \resumeProjectHeading
         {Custom AI Assistant with RAG}
         {https://github.com/Ronin-117/lang_chain_test}
         {LangChain, NLP, Python}
     \resumeItemListStart
-        \resumeItem{Constructed a Retrieval-Augmented Generation (RAG) system to extract and synthesize accurate, context-aware answers from specialized knowledge bases, a core technique for data retrieval and analysis.}
-    \end{itemize}
+        \resumeItem{Constructed a Retrieval-Augmented Generation (RAG) system to provide accurate, context-aware answers from a specialized knowledge base, a core technique in modern enterprise AI.}
+    \resumeItemListEnd
 \resumeSubHeadingListEnd
 
-%----------- ACHIEVEMENTS \& PUBLICATIONS -----------
+%----------- ACHIEVEMENTS & PUBLICATIONS -----------
 \section{Achievements \& Publications}
 \resumeSubHeadingListStart
-    \resumeItem{\textbf{Secured Top 10 Finalist} position in IBM watsonx Challenge for "Voxia," an innovative sustainable project management tool.}
-    \resumeItem{\textbf{Published Research Paper:} "Oratis: AI Guide to Ace interviews" - Co-authored paper presented at International Conference (April 2025).}
+    \resumeItem{\textbf{Secured a Top 10 Finalist position in the IBM watsonx Challenge} for developing "Voxia," an innovative sustainable project management tool at the inaugural IBM Kochi competition.}
+    \resumeItem{\textbf{Published Research Paper:} "Oratis: AI Guide to Ace interviews" - Co-authored paper presented at the International Conference on Innovations in Mechanical, Robotics, Computing, and Biomedical Engineering (April 2025).}
     \resumeItem{\textbf{Certifications:} AWS AI Cloud Practitioner (Udemy)[\href{https://drive.google.com/file/d/1hyq1dbVjAA1MLuaTsM54wPWLVKikRFmg/view?usp=sharing}{Certificate}], IBM watsonx.ai Technical Essentials (IBM)[\href{https://drive.google.com/file/d/1jE_tHyAmTK9e3APr32Q-aovg3wDvVlDL/view?usp=sharing}{Certificate}].}
 \resumeSubHeadingListEnd
 
 \end{document}
--------------------------
 """
-
-JOB_DESCRIPTION = """
-We are looking for a Senior Backend Engineer with a strong focus on cloud infrastructure and data pipelines. The ideal candidate will have over 5 years of experience with Python, AWS services (S3, Lambda, EC2), and building scalable data processing systems. Experience with Docker and Kubernetes is a major plus. The role involves designing and implementing backend services that support our machine learning models.
-"""
+JOB_DESCRIPTION = "We are looking for a Senior Backend Engineer..."
 
 # --- 5. MAIN APPLICATION FLOW ---
 if __name__ == "__main__":
     
-    # --- PHASE 1: TAILORING LOOP ---
-    print("\n" + "="*50 + "\nPHASE 1: AI-POWERED RESUME TAILORING\n" + "="*50)
-    current_latex = BASE_RESUME_LATEX
-    while True:
-        print("\n--- Current Resume ---\n" + current_latex + "\n" + "-"*22)
-        user_instructions = input("Enter your instructions to tailor the resume (e.g., 'Emphasize cloud experience and AWS skills').\n> ")
-        if not user_instructions:
-            print("No instructions provided, using previous version.")
-        
-        tailored_latex = tailor_resume_with_gemini(current_latex, JOB_DESCRIPTION, user_instructions)
-        
-        if tailored_latex:
-            print("\n--- AI Tailored Result ---\n" + tailored_latex + "\n" + "-"*25)
-            feedback = input("\nAre you satisfied with this version? \nType 'done' to proceed to humanizing, or enter new instructions to refine it again.\n> ")
-            current_latex = tailored_latex # Always update to the latest version for the next loop
-            if feedback.lower() == 'done':
-                break
-        else:
-            print("Tailoring failed. Please check the error.")
-            if input("Try again? (y/n): ").lower() != 'y':
-                break
+    user_instructions = input("Enter your instructions to tailor the resume (e.g., 'Emphasize cloud experience').\n> ")
 
-    # --- PHASE 2: HUMANIZING LOOP ---
-    print("\n" + "="*50 + "\nPHASE 2: HUMANIZING AND FINALIZING\n" + "="*50)
-    final_latex = None
-    while True:
-        print("\nStarting the chunk-based humanization process...")
-        
-        extracted_chunks = extract_text_chunks(current_latex)
-        if not extracted_chunks:
-            if input("Could not extract chunks. Retry? (y/n): ").lower() != 'y': break
-            else: continue
+    # Step 1: Get template and chunks
+    tailored_response = get_tailored_template_and_chunks(
+        BASE_RESUME_LATEX, JOB_DESCRIPTION, user_instructions
+    )
 
-        humanized_chunks = []
-        all_chunks_humanized = True
-        for chunk in extracted_chunks:
-            humanized_text = humanize_text(chunk.section_content)
-            if humanized_text:
-                humanized_chunks.append(TextChunk(section_title=chunk.section_title, section_content=humanized_text))
-            else:
-                print(f"❌ Failed to humanize section: '{chunk.section_title}'")
-                all_chunks_humanized = False
-                break
-        
-        if not all_chunks_humanized:
-            if input("Humanization failed on a chunk. Retry the whole process? (y/n): ").lower() != 'y': break
-            else: continue
-            
-        reintegrated_latex = reintegrate_chunks_with_gemini(current_latex, humanized_chunks)
-        if not reintegrated_latex:
-            if input("Could not re-integrate text. Retry? (y/n): ").lower() != 'y': break
-            else: continue
-            
-        print("\n--- Final Humanized LaTeX Result ---\n" + reintegrated_latex + "\n" + "-" * 35)
-
-        feedback = input("\nAre you satisfied with the humanized version? \nType 'save' to finish, or 'retry' to run the humanize process again.\n> ")
-        if feedback.lower() == 'save':
-            final_latex = reintegrated_latex
-            break
-        elif feedback.lower() != 'retry':
-            print("Invalid input. Please type 'save' or 'retry'.")
-    
-    # --- PHASE 3: SAVING THE FILE ---
-    if final_latex:
-        output_filename = input("\nEnter a filename to save the final .tex file (e.g., 'JohnDoe_Backend.tex'):\n> ")
-        if not output_filename.endswith('.tex'):
-            output_filename += '.tex'
-            
-        with open(output_filename, "w", encoding="utf-8") as f:
-            f.write(final_latex)
-        
-        print(f"\n✅✅✅ Success! Final resume saved as '{output_filename}' ✅✅✅")
+    # Add a check to ensure we got a valid response before proceeding
+    if not tailored_response:
+        print("\nProcess aborted due to an error in the Gemini generation step.")
     else:
-        print("\nProcess aborted. No file was saved.")
+        latex_template = tailored_response.latex_template
+        content_chunks = tailored_response.content_chunks
+
+        print("\n--- Generated LaTeX Template ---")
+        print(latex_template)
+        print("\n--- Generated Content Chunks ---")
+        for chunk in content_chunks:
+            print(f"- {chunk.title}: {chunk.content}")
+        
+        # Step 2: "Humanize" content
+        humanized_content_map = humanize_content(content_chunks)
+        
+        # Step 3: Populate the template
+        final_latex = populate_template(latex_template, humanized_content_map)
+        
+        print("\n--- FINAL RENDERED LATEX ---")
+        print(final_latex)
+        print("-" * 30)
+        
+        # Step 4: Save the final file
+        save_feedback = input("Type 'save' to save this file, or anything else to exit.\n> ")
+        if save_feedback.lower() == 'save':
+            # --- FIX #2 IS HERE ---
+            # Check if final_latex is not None before trying to save
+            if final_latex:
+                output_filename = input("\nEnter a filename (e.g., 'MyTailoredResume.tex'):\n> ")
+                if not output_filename.endswith('.tex'):
+                    output_filename += '.tex'
+                
+                with open(output_filename, "w", encoding="utf-8") as f:
+                    f.write(final_latex)
+                
+                print(f"\n✅✅✅ Success! Final resume saved as '{output_filename}' ✅✅✅")
+            else:
+                print("\n❌ Cannot save. The final LaTeX content is empty due to an earlier error.")
+        else:
+            print("\nProcess finished. No file was saved.")

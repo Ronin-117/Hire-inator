@@ -1,9 +1,11 @@
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useEffect, useState } from 'react';
 import { Link, Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom'; // Import router components
+import EditorPage from './EditorPage';
 import { auth } from './firebaseConfig';
 import LoginPage from './LoginPage';
 import ProfilePage from './ProfilePage'; // Import the new ProfilePage
+import TailorPage from './TailorPage';
 import UploadPage from './UploadPage';
 
 // A new component for our main dashboard content
@@ -14,7 +16,7 @@ const Dashboard = () => (
             <Link to="/profile"><button>Go to Profile</button></Link>
             {/* Add links for other buttons later */}
             <Link to="/upload"><button>Upload Resume</button></Link>
-            <button>Tailor Resume</button>
+            <Link to="/tailor"><button>Tailor Resume</button></Link>
         </nav>
     </div>
 );
@@ -53,6 +55,8 @@ function App() {
                     <Route path="/profile" element={user ? <ProfilePage /> : <Navigate to="/login" />} />
                     <Route path="/" element={user ? <Dashboard /> : <Navigate to="/login" />} />
                     <Route path="/upload" element={user ? <UploadPage /> : <Navigate to="/login" />} />
+                    <Route path="/tailor" element={user ? <TailorPage /> : <Navigate to="/login" />} />
+                    <Route path="/editor/:resumeId" element={user ? <EditorPage /> : <Navigate to="/login" />} />
                 </Routes>
             </div>
         </Router>
