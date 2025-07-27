@@ -1,0 +1,164 @@
+/* src/LoginPage.css */
+
+/* --- THEME PALETTE & GLOBAL STYLES --- */
+:root {
+  --black: #000000;
+  --light-gray: #e3e3e3;
+  --green: #007620;
+  --brown: #4f2d0b;
+  --purple: #4b2560;
+  --white: #ffffff;
+  --error-red: #d93025;
+
+  /* Set the font for the entire app for consistency */
+  font-family: 'Chakra Petch', sans-serif;
+}
+
+/* --- FULL PAGE CONTAINER --- */
+/* This container ensures our login form is always centered, regardless of screen size. */
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--light-gray);
+  padding: 1rem; /* Add some padding for smaller screens */
+  box-sizing: border-box; /* Ensures padding doesn't add to the width/height */
+}
+
+/* --- THE LOGIN "INATOR" PANEL --- */
+.login-container {
+  background-color: var(--white);
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  border: 3px solid var(--black);
+  text-align: center;
+  width: 100%;
+  max-width: 420px; /* Set a max-width for larger screens */
+  box-sizing: border-box;
+}
+
+.login-container h2 {
+  color: var(--purple);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  font-size: 1.8rem; /* Slightly smaller base font size */
+}
+
+/* --- INPUT FIELD STYLING --- */
+.input-group {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.input-field {
+  width: 100%;
+  padding: 12px 10px;
+  border: 2px solid var(--brown);
+  border-radius: 5px;
+  background-color: #f7f7f7;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--purple);
+  box-shadow: 0 0 5px rgba(75, 37, 96, 0.5);
+}
+
+/* --- BUTTON STYLING --- */
+.button-group {
+  display: flex;
+  flex-direction: column; /* Start with a column layout for mobile */
+  gap: 10px;
+  margin-bottom: 1.5rem;
+}
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 5px;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-primary {
+  background-color: var(--purple);
+  color: var(--white);
+  border: 2px solid var(--purple);
+}
+.btn-primary:hover { filter: brightness(1.15); }
+
+.btn-secondary {
+  background-color: var(--white);
+  color: var(--purple);
+  border: 2px solid var(--purple);
+}
+.btn-secondary:hover { background-color: rgba(75, 37, 96, 0.1); }
+
+/* --- GOOGLE BUTTON --- */
+.divider {
+  border: none;
+  height: 2px;
+  background-color: var(--brown);
+  opacity: 0.5;
+  margin: 1.5rem 0;
+}
+
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background-color: var(--green);
+  color: var(--white);
+  border: 2px solid var(--green);
+}
+.btn-google:hover { filter: brightness(1.1); }
+
+.google-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* --- ERROR MESSAGE --- */
+.error-message {
+  color: var(--error-red);
+  background-color: #fbe9e7;
+  border: 1px solid var(--error-red);
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  word-wrap: break-word; /* Prevents long error messages from overflowing */
+}
+
+
+/* --- RESPONSIVE DESIGN --- */
+/* A media query targets screens *above* a certain width. */
+/* On screens wider than 480px, these styles will apply. */
+@media (min-width: 480px) {
+  .login-container {
+    padding: 2.5rem 3rem; /* More horizontal padding on larger screens */
+  }
+
+  .login-container h2 {
+    font-size: 2.2rem; /* Make the title bigger */
+  }
+
+  /* This is the key change: switch from column to row for the buttons */
+  .button-group {
+    flex-direction: row;
+  }
+}

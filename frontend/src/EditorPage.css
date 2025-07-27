@@ -1,0 +1,138 @@
+/* src/EditorPage.css */
+
+.editor-container {
+  max-width: 1400px; /* Allow for a wider layout */
+  margin: 2rem auto;
+  padding: 1rem 2rem;
+}
+
+.editor-container a {
+  color: var(--accent-purple);
+  text-decoration: none;
+  font-weight: bold;
+}
+.editor-container a:hover { text-decoration: underline; }
+
+.editor-header {
+  text-align: center;
+  font-size: 2.2rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 2rem;
+  color: var(--light-gray);
+  word-break: break-all; /* Prevents long names from overflowing */
+}
+
+/* Main two-column layout */
+.editor-layout {
+  display: flex;
+  flex-direction: column; /* Mobile first: stack columns */
+  gap: 2rem;
+}
+
+/* --- PDF Viewer Styling --- */
+.pdf-viewer-panel {
+  flex: 3; /* Give more space to the PDF viewer */
+  min-height: 800px;
+  display: flex;
+  flex-direction: column;
+}
+
+.pdf-viewer-panel iframe {
+  border: 2px solid var(--accent-brown);
+  border-radius: 8px;
+  flex-grow: 1; /* Make the iframe fill the available space */
+}
+
+.pdf-viewer-placeholder {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--brown);
+  border-radius: 8px;
+  min-height: 800px;
+}
+
+/* --- Control Panel Styling --- */
+.control-panel {
+  flex: 2; /* Give less space to the controls */
+  background-color: var(--panel-bg);
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.control-panel h3 {
+  margin-top: 0;
+  border-bottom: 1px solid var(--accent-brown);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+}
+
+.control-panel p {
+  opacity: 0.8;
+  font-size: 0.9rem;
+  margin-top: 0;
+}
+
+.chat-textarea {
+  width: 100%;
+  padding: 10px;
+  background-color: #1f1f1f;
+  border: 1px solid var(--brown);
+  border-radius: 5px;
+  color: var(--light-gray);
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 1rem;
+  resize: vertical; /* Allow vertical resizing */
+}
+
+.control-panel hr {
+  border: none;
+  border-top: 1px solid #444;
+  margin: 2rem 0;
+}
+
+/* --- Button Styling --- */
+.control-panel .btn {
+  width: 100%;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 1rem;
+  text-transform: uppercase;
+  border: none;
+  background-color: var(--accent-purple);
+  color: var(--black);
+  margin-top: 1rem;
+}
+
+.control-panel .btn:disabled {
+  background-color: #555;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.control-panel .btn-secondary {
+  background-color: var(--card-bg);
+  color: var(--light-gray);
+  border: 1px solid var(--accent-brown);
+}
+
+.control-panel .error-message {
+  margin-top: 1rem;
+  color: var(--error-red);
+  font-weight: bold;
+}
+
+/* --- Media Query for Desktop Layout --- */
+@media (min-width: 992px) {
+  .editor-layout {
+    flex-direction: row; /* Side-by-side on large screens */
+  }
+}

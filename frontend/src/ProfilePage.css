@@ -1,0 +1,115 @@
+/* src/ProfilePage.css */
+
+.profile-container {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 1rem 2rem;
+}
+
+.profile-container a {
+  color: var(--accent-purple);
+  text-decoration: none;
+  font-weight: bold;
+}
+.profile-container a:hover { text-decoration: underline; }
+
+.profile-header {
+  text-align: center;
+  font-size: 2.2rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 2rem;
+  color: var(--light-gray);
+}
+
+/* --- Panel Styling --- */
+.profile-panel {
+  background-color: var(--panel-bg);
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 1.5rem 2rem;
+  margin-bottom: 2rem;
+}
+
+.profile-panel h3 {
+  margin-top: 0;
+  border-bottom: 1px solid var(--accent-brown);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* --- Form Styling --- */
+.profile-container .form-group { margin-bottom: 1rem; }
+.profile-container .form-group label { display: block; margin-bottom: 0.5rem; }
+
+.profile-container .form-input,
+.profile-container .form-textarea {
+  width: 100%;
+  padding: 10px;
+  background-color: #1f1f1f;
+  border: 1px solid var(--brown);
+  border-radius: 5px;
+  color: var(--light-gray);
+  font-size: 1rem;
+}
+
+.profile-container .form-input:disabled,
+.profile-container .form-textarea:disabled {
+  background-color: #333;
+  opacity: 0.6;
+}
+
+/* --- Button Styling --- */
+/* We target buttons *only* inside the profile container */
+.profile-container .btn {
+  padding: 8px 15px;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border: none;
+}
+
+.profile-container .btn-primary {
+  background-color: var(--accent-purple);
+  color: var(--black);
+}
+
+.profile-container .btn-secondary {
+  background-color: var(--card-bg);
+  color: var(--light-gray);
+  border: 1px solid var(--accent-brown);
+}
+
+.profile-container .btn-danger {
+  background-color: #a94442;
+  color: var(--white);
+}
+
+/* --- Resume List Styling --- */
+.profile-container .resume-list { list-style: none; padding: 0; }
+.profile-container .resume-item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: var(--card-bg);
+  border-radius: 5px;
+  margin-bottom: 1rem;
+}
+
+.profile-container .resume-info strong { font-size: 1.2rem; }
+.profile-container .resume-info small { display: block; opacity: 0.6; }
+
+.profile-container .resume-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 1rem;
+}
+
+@media (min-width: 700px) {
+  .profile-container .resume-actions {
+    margin-top: 0;
+  }
+}

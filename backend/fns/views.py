@@ -407,16 +407,20 @@ def tailor_resume_view(request):
     user_uid = request.user_id
     db = firestore.client()
     
-    # Get inputs from the frontend request
+    # --- Step 1: Get all inputs from the frontend request ---
     base_resume_id = request.POST.get('base_resume_id')
     job_description = request.POST.get('job_description')
+    new_resume_name = request.POST.get('new_resume_name', '').strip()
 
-    if not base_resume_id or not job_description:
-        return JsonResponse({'error': 'base_resume_id and job_description are required.'}, status=400)
+    # --- Step 2: Validate all required inputs ---
+    if not base_resume_id or not job_description or not new_resume_name:
+        return JsonResponse({
+            'error': 'base_resume_id, job_description, and new_resume_name are all required.'
+        }, status=400)
 
     try:
-        # 1. Fetch base resume and user instructions from Firestore
-        print("Fetching data from Firestore...")
+        # --- Step 3: Fetch base resume and user instructions from Firestore ---
+        print("Fetching base data from Firestore...")
         resume_ref = db.collection('resumes').document(base_resume_id)
         base_resume_doc = resume_ref.get()
         if not base_resume_doc.exists or base_resume_doc.to_dict().get('userId') != user_uid:
@@ -427,34 +431,30 @@ def tailor_resume_view(request):
         
         base_latex = base_resume_doc.to_dict().get('latexContent', '')
         user_instructions = user_doc.to_dict().get('customInstructions', '')
-
-        print("-" * 20)
-        print(f"DEBUG: Sending Base LaTeX to Gemini (first 200 chars): \n{base_latex[:200]}...")
-        print("-" * 20)
-
-        # 2. Run the full AI + Humanize + Stitch process
+        
+        # --- Step 4: Run the full AI + Humanize + Stitch process ---
         tailored_response = get_tailored_template_and_chunks(base_latex, job_description, user_instructions)
         if not tailored_response:
-            raise Exception("Failed to get response from Gemini.")
+            raise Exception("Failed to get a valid response from the Gemini API.")
             
         humanized_map = humanize_content_chunks(tailored_response.content_chunks)
         final_latex = populate_template(tailored_response.latex_template, humanized_map)
         
-        # 3. Save the result as a NEW resume in Firestore
-        print("Saving tailored resume to Firestore...")
+        # --- Step 5: Save the result as a NEW resume in Firestore ---
+        print(f"Saving tailored resume to Firestore with new name: '{new_resume_name}'")
         new_resume_data = {
             'userId': user_uid,
-            'resumeName': f"Tailored for: {base_resume_doc.to_dict().get('resumeName', 'Untitled')}",
+            'resumeName': new_resume_name, # Use the name provided by the user
             'latexContent': final_latex,
-            'isDraft': True, # We can use a flag to distinguish drafts
+            'isDraft': True,
             'createdAt': firestore.SERVER_TIMESTAMP,
             'lastUpdated': firestore.SERVER_TIMESTAMP,
-            'jobDescription': job_description, 
+            'jobDescription': job_description,
         }
         new_doc_ref = db.collection('resumes').add(new_resume_data)
         new_resume_id = new_doc_ref[1].id
         
-        # 4. Return the ID of the new draft resume
+        # --- Step 6: Return the ID of the new draft resume to the frontend ---
         return JsonResponse({
             'status': 'success', 
             'message': 'Resume tailored successfully!',
@@ -622,3 +622,49 @@ def download_resume_tex_view(request, resume_id: str):
     except Exception as e:
         print(f"An error occurred during TeX download: {e}")
         return JsonResponse({'error': 'An internal server error occurred.'}, status=500)
+    
+# fns/views.py
+
+# ... (keep all your existing imports) ...
+
+# --- ADD THIS NEW VIEW ---
+@csrf_exempt
+@firebase_auth_required
+def rename_resume_view(request, resume_id: str):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST method is allowed'}, status=405)
+
+    user_uid = request.user_id
+    db = firestore.client()
+
+    # Get the new name from the POST data
+    new_name = request.POST.get('new_name', '').strip()
+
+    if not new_name:
+        return JsonResponse({'error': 'A new name is required.'}, status=400)
+
+    try:
+        resume_ref = db.collection('resumes').document(resume_id)
+        resume_doc = resume_ref.get()
+
+        if not resume_doc.exists:
+            return JsonResponse({'error': 'Resume not found'}, status=404)
+
+        # SECURITY CHECK: Ensure the user owns this resume
+        if resume_doc.to_dict().get('userId') != user_uid:
+            return JsonResponse({'error': 'Permission denied'}, status=403)
+        
+        # If checks pass, update the document with the new name
+        resume_ref.update({
+            'resumeName': new_name,
+            'lastUpdated': firestore.SERVER_TIMESTAMP
+        })
+        
+        print(f"User {user_uid} renamed resume {resume_id} to '{new_name}'")
+        
+        return JsonResponse({'status': 'success', 'message': 'Resume renamed successfully.'})
+
+    except Exception as e:
+        print(f"An error occurred during resume rename: {e}")
+        return JsonResponse({'error': 'An internal server error occurred.'}, status=500)
+    
