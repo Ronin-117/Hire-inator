@@ -14,4 +14,6 @@ urlpatterns = [
     path('tailor-resume/', views.tailor_resume_view, name='tailor_resume'),
     path('resumes/<str:resume_id>/', views.get_resume_details_view, name='get_resume_details'),
     path('resumes/<str:resume_id>/refine/', views.refine_resume_view, name='refine_resume'),
+    path('resumes/<str:resume_id>/delete/', views.delete_resume_view, name='delete_resume'),
+    path('resumes/<str:resume_id>/download-tex/', views.download_resume_tex_view, name='download_resume_tex'),
 ]

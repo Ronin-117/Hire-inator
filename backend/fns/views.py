@@ -551,3 +551,74 @@ def refine_resume_view(request, resume_id: str):
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+    
+
+@csrf_exempt
+@firebase_auth_required
+def delete_resume_view(request, resume_id: str):
+    # This view should only respond to DELETE requests for correctness
+    if request.method != 'DELETE':
+        return JsonResponse({'error': 'Only DELETE method is allowed'}, status=405)
+
+    user_uid = request.user_id
+    db = firestore.client()
+
+    try:
+        resume_ref = db.collection('resumes').document(resume_id)
+        resume_doc = resume_ref.get()
+
+        if not resume_doc.exists:
+            # It's good practice to return 404 if the resource doesn't exist
+            return JsonResponse({'error': 'Resume not found'}, status=404)
+
+        # CRITICAL SECURITY CHECK: Ensure the user owns this resume before deleting
+        if resume_doc.to_dict().get('userId') != user_uid:
+            return JsonResponse({'error': 'Permission denied'}, status=403)
+        
+        # If checks pass, delete the document
+        resume_ref.delete()
+        print(f"User {user_uid} deleted resume {resume_id}")
+        
+        return JsonResponse({'status': 'success', 'message': 'Resume deleted successfully.'})
+
+    except Exception as e:
+        print(f"An error occurred during resume deletion: {e}")
+        return JsonResponse({'error': 'An internal server error occurred.'}, status=500)
+
+
+@csrf_exempt
+@firebase_auth_required
+def download_resume_tex_view(request, resume_id: str):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Only GET method is allowed'}, status=405)
+
+    user_uid = request.user_id
+    db = firestore.client()
+
+    try:
+        resume_ref = db.collection('resumes').document(resume_id)
+        resume_doc = resume_ref.get()
+
+        if not resume_doc.exists:
+            return JsonResponse({'error': 'Resume not found'}, status=404)
+
+        resume_data = resume_doc.to_dict()
+
+        # CRITICAL SECURITY CHECK: Ensure the user owns this resume
+        if resume_data.get('userId') != user_uid:
+            return JsonResponse({'error': 'Permission denied'}, status=403)
+        
+        latex_content = resume_data.get('latexContent', '')
+        resume_name = resume_data.get('resumeName', 'resume')
+
+        # Create an HTTP response with the LaTeX content as plain text
+        response = HttpResponse(latex_content, content_type='text/plain; charset=utf-8')
+        
+        # This header tells the browser to download the file with a .tex extension
+        response['Content-Disposition'] = f'attachment; filename="{resume_name}.tex"'
+        
+        return response
+
+    except Exception as e:
+        print(f"An error occurred during TeX download: {e}")
+        return JsonResponse({'error': 'An internal server error occurred.'}, status=500)

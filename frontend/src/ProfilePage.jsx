@@ -139,6 +139,68 @@ const ProfilePage = () => {
         }
     };
 
+    const handleDownloadTex = async (resumeId, resumeName) => {
+        if (!auth.currentUser) return;
+        setError(null);
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const response = await fetch(`http://127.0.0.1:8000/api/resumes/${resumeId}/download-tex/`, {
+                headers: { 'Authorization': 'Bearer ' + token },
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to download .tex file.');
+            }
+
+            // Get the text content from the response
+            const textData = await response.text();
+            // Create a blob of plain text
+            const blob = new Blob([textData], { type: 'text/plain;charset=utf-8' });
+            
+            // Standard download trigger logic
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${resumeName || 'resume'}.tex`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error("TeX Download failed:", err);
+            setError(err.message);
+        }
+    };
+
+    const handleDeleteResume = async (resumeId, resumeName) => {
+        // CRITICAL: Confirm with the user before deleting!
+        if (!window.confirm(`Are you sure you want to permanently delete "${resumeName}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        if (!auth.currentUser) return;
+        setError(null);
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const response = await fetch(`http://127.0.0.1:8000/api/resumes/${resumeId}/delete/`, {
+                method: 'DELETE', // Use the correct HTTP method
+                headers: { 'Authorization': 'Bearer ' + token },
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to delete resume.');
+            }
+            
+            // Success! Update the UI instantly by removing the item from state.
+            setResumes(currentResumes => currentResumes.filter(r => r.id !== resumeId));
+            setStatusMessage(`Successfully deleted "${resumeName}".`);
+
+        } catch (err) {
+            console.error("Delete failed:", err);
+            setError(err.message);
+        }
+    };
+
     const isLoading = loadingProfile || loadingResumes;
     if (isLoading) return <h1>Loading Profile...</h1>;
 
@@ -198,7 +260,12 @@ const ProfilePage = () => {
                                 </small>
                             </div>
                             <div>
-                                <button style={{ marginRight: '5px' }}>View/Edit</button>
+                                <button
+                                    style={{ marginRight: '5px' }}
+                                    onClick={() => handleDownloadTex(resume.id, resume.resumeName)}
+                                >
+                                    Download .tex
+                                </button>
                                 <button
                                     style={{ marginRight: '5px' }}
                                     onClick={() => handleDownloadPdf(resume.id, resume.resumeName)}
@@ -206,7 +273,12 @@ const ProfilePage = () => {
                                 >
                                     {downloadingId === resume.id ? 'Compiling...' : 'Download PDF'}
                                 </button>
-                                <button style={{ color: 'red' }}>Delete</button>
+                                <button 
+                                    style={{ color: 'white', backgroundColor: '#d9534f', border: 'none', padding: '5px 10px', cursor: 'pointer' }}
+                                    onClick={() => handleDeleteResume(resume.id, resume.resumeName)}
+                                >
+                                    Delete
+                                </button>
                             </div>
                         </li>
                     ))}
