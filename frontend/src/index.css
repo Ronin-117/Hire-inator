@@ -1,30 +1,48 @@
 /* src/index.css */
 
+/* --- 1. LIGHT MODE (Default Theme) --- */
 :root {
-  --black: #000000;
-  --light-gray: #e3e3e3;
-  --green: #007620;
-  --brown: #4f2d0b;
-  --purple: #4b2560;
-  --white: #ffffff;
-  --error-red: #d93025;
-
-  /* --- Dark Theme Variables --- */
-  --dark-bg: #1a1a1a;
-  --panel-bg: #2c2c2c;
-  --card-bg: #333333;
-  --accent-purple: #c792ea;
-  --accent-brown: #c3a189;
+  /* Define colors by their purpose, not their name */
+  --bg-primary: #e3e3e3;       /* Main page background */
+  --bg-secondary: #ffffff;     /* Panel/card background */
+  --text-primary: #000000;     /* Main text color */
+  --text-secondary: #4f4f4f;    /* Muted/secondary text color */
+  --border-color: #cccccc;     /* Borders for panels and inputs */
+  --accent-primary: #4b2560;   /* The main purple color */
+  --accent-secondary: #4f2d0b; /* The brown color */
+  --accent-green: #007620;
+  
+  font-family: 'Chakra Petch', sans-serif;
 }
 
+/* --- 2. DARK MODE --- */
+/* When the body has a 'dark-mode' class, these variables will override the defaults */
+body.dark-mode {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2c2c2c;
+  --text-primary: #e3e3e3;
+  --text-secondary: #a0a0a0;
+  --border-color: #444444;
+  --accent-primary: #c792ea;   /* A lighter, glowing purple for dark mode */
+  --accent-secondary: #c3a189; /* A lighter brown */
+}
+
+
+/* --- 3. GLOBAL STYLES --- */
+/* These styles use the variables, so they will change automatically with the theme */
 body {
   margin: 0;
-  font-family: 'Chakra Petch', sans-serif;
-  background-color: var(--dark-bg); /* Set the dark background globally */
-  color: var(--light-gray); /* Set default text color to light */
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.2s, color 0.2s;
 }
 
-/* Ensure the app fills the screen */
 #root {
   min-height: 100vh;
 }
+
+a {
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
