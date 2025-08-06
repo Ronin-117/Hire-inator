@@ -139,7 +139,7 @@ thinc
 threadpoolctl
 tokenizers
 toml
-torch
+#torch
 tornado
 tqdm
 transformers
