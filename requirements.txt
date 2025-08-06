@@ -25,7 +25,7 @@ distro
 Django
 django-cors-headers
 dotenv
-en_core_web_sm
+#en_core_web_sm
 filelock
 firebase_admin
 fsspec
