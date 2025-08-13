@@ -2,23 +2,18 @@ from django.shortcuts import render
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 
-
-# Create your views here.
-# fns/views.py
-
 from django.http import HttpResponse, JsonResponse
-from firebase_admin import firestore # Import firestore
+from firebase_admin import firestore
 from .decorators import firebase_auth_required
 
-# Imports for Gemini
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 from typing import List, Dict
 from datetime import datetime
-import subprocess # For running external commands
-import os         # For path manipulation
-import tempfile   # For creating temporary directories
+import subprocess
+import os        
+import tempfile   
 
 from transformer.app import AcademicTextHumanizer
 import re
@@ -43,13 +38,10 @@ class TailoredResumeResponse(BaseModel):
 def home(request):
     return HttpResponse("<h1>Welcome! Go to /test-firebase to write to the database.</h1>")
 
-# Our new test view
 def test_firebase_connection(request):
     try:
-        # Get a reference to the Firestore client
         db = firestore.client()
 
-        # Create a new document in a collection called 'test_collection'
         doc_ref = db.collection('test_logs').document('log_from_django')
         doc_ref.set({
             'message': 'Hello from Django!',
@@ -66,18 +58,13 @@ def get_user_profile(request):
     This view can only be accessed by users who provide a valid
     Firebase ID token.
     """
-    # Thanks to our decorator, we can safely access the user's UID
     user_uid = request.user_id 
     
     print(f"Authenticated user with UID: {user_uid}")
-
-    # In a real app, you would now fetch data from Firestore for this user
-    # For example: db.collection('users').document(user_uid).get()
     
     return JsonResponse({
         "status": "success",
         "message": f"You have accessed a protected endpoint. Your Firebase UID is: {user_uid}",
-        # We can also return the full token data for debugging
         "user_data": request.firebase_user 
     })
 
@@ -87,15 +74,10 @@ def convert_pdf_to_latex(pdf_bytes):
     Converts PDF bytes to a LaTeX string using the Gemini API,
     following the original working script's logic.
     """
-    # This is your Pydantic model for the response structure
     class Res(BaseModel):
         ai_response: str
         resume_tex: str
 
-    # --- THE FIX ---
-    # The incorrect 'genai.configure(...)' line has been removed.
-    # We now initialize the client directly with the API key,
-    # just like in your working standalone script.
     client = genai.Client(api_key=settings.GEMINI_API_KEY)
     
     prompt = (
@@ -109,7 +91,6 @@ def convert_pdf_to_latex(pdf_bytes):
         "starting with `\\documentclass` and ending with `\\end{document}`."
     )
 
-    # This is the exact, working API call from your original script
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=[
@@ -126,7 +107,7 @@ def convert_pdf_to_latex(pdf_bytes):
     return parsed_response.resume_tex
 
 
-# --- The Django View (No changes needed here) ---
+# --- The Django View  ---
 @csrf_exempt
 @firebase_auth_required
 def upload_resume_view(request):
@@ -139,11 +120,8 @@ def upload_resume_view(request):
     uploaded_file = request.FILES['resume_pdf']
     user_uid = request.user_id
 
-     # STEP 2: Get the custom resume name from the POST data.
-    # request.POST contains text data sent along with files in FormData.
     resume_name = request.POST.get('resume_name', '').strip()
 
-    # STEP 3: If the name is empty, create a default one.
     if not resume_name:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
         resume_name = f"Resume {timestamp}"
@@ -193,14 +171,12 @@ def upload_tex_view(request):
     uploaded_file = request.FILES['resume_tex']
     user_uid = request.user_id
     
-    # Use the same logic for getting the custom name
     resume_name = request.POST.get('resume_name', '').strip()
     if not resume_name:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
         resume_name = f"Imported Resume {timestamp}"
 
     try:
-        # Read the content of the .tex file. It's bytes, so we decode it.
         latex_content = uploaded_file.read().decode('utf-8')
 
         print(f"Saving uploaded .tex file to Firestore with name: '{resume_name}'")
@@ -229,14 +205,12 @@ def upload_tex_view(request):
         print(f"An error occurred: {e}")
         return JsonResponse({'error': str(e)}, status=500)
     
-# --- ADD THIS NEW HELPER FUNCTION ---
 def compile_latex_to_pdf_bytes(latex_content: str):
     """
     Takes a string of LaTeX content, compiles it in a temporary directory,
     and returns the binary content of the resulting PDF.
     Returns None if compilation fails.
     """
-    # Create a temporary directory that will be automatically cleaned up
     with tempfile.TemporaryDirectory() as tempdir:
         tex_filename = "resume.tex"
         tex_filepath = os.path.join(tempdir, tex_filename)
@@ -250,13 +224,12 @@ def compile_latex_to_pdf_bytes(latex_content: str):
         command = [
             "pdflatex",
             "-interaction=nonstopmode",
-            f"-output-directory={tempdir}", # Ensure output is in the same temp dir
+            f"-output-directory={tempdir}",
             tex_filepath,
         ]
 
         try:
             # 3. Run the compiler command. We run it twice for complex docs (e.g., table of contents)
-            # which is good practice.
             for i in range(1):
                 print(f"Running pdflatex pass {i+1}...")
                 subprocess.run(command, check=True, capture_output=True, text=True)
@@ -272,7 +245,7 @@ def compile_latex_to_pdf_bytes(latex_content: str):
 
         except subprocess.CalledProcessError as e:
             print(f"❌ PDF Compilation Failed!")
-            print(e.stdout) # Print the LaTeX log for debugging
+            print(e.stdout)
             return None
         
 @csrf_exempt
@@ -305,7 +278,6 @@ def download_resume_pdf_view(request, resume_id: str):
         if pdf_bytes:
             # 4. If compilation is successful, create the HTTP response
             response = HttpResponse(pdf_bytes, content_type='application/pdf')
-            # This header tells the browser to download the file
             response['Content-Disposition'] = f'attachment; filename="{resume_data.get("resumeName", "resume")}.pdf"'
             return response
         else:
@@ -316,7 +288,6 @@ def download_resume_pdf_view(request, resume_id: str):
         return JsonResponse({'error': 'An internal server error occurred.'}, status=500)
     
 def get_tailored_template_and_chunks(base_latex, job_desc, instructions):
-    # This function is mostly the same as your script
     print("\n🤖 Sending request to Gemini for template and content generation...")
     prompt = f"""
     You are an expert resume editor. Your task is to update the 'BASE LATEX RESUME' based on the provided 'JOB DESCRIPTION' and 'USER INSTRUCTIONS'.Try to make the content in the resume more human like(dont need to use complex language , just simple english).
@@ -360,15 +331,14 @@ def humanize_content_chunks(chunks: List[ContentChunk]) -> Dict[str, str]:
     humanized_map = {}
     special_chars = ['#', '$', '%', '&', '_', '{', '}']
     for chunk in chunks:
-        # Replace this line with a real humanizer call if you get one working later
         humanized_text = humanizer.humanize_text(
                             chunk.content,
                             use_passive=True,
                             use_synonyms=True
                         )
         for char in special_chars:
-            broken_escape = f'\\ {char}'   # e.g., looks for '\ #'
-            correct_escape = f'\\{char}'    # e.g., should be '\#'
+            broken_escape = f'\\ {char}'  
+            correct_escape = f'\\{char}'   
             if broken_escape in humanized_text:
                 humanized_text = humanized_text.replace(broken_escape, correct_escape)
         humanized_map[chunk.title] = humanized_text
@@ -378,21 +348,16 @@ def humanize_content_chunks(chunks: List[ContentChunk]) -> Dict[str, str]:
     return humanized_map
 
 def populate_template(template: str, content_map: Dict[str, str]) -> str:
-    # This function is the same as your working script
     print("\n🧩 Stitching humanized content into the final template...")
     
     final_latex = template
     
-    # Loop through the map of content we need to insert
     for placeholder_key, content in content_map.items():
-        # Create the placeholder format, e.g., "{summary_section}"
         placeholder_to_find = "{" + placeholder_key + "}"
         
         if placeholder_to_find in final_latex:
-            # Directly replace the placeholder with the content
             final_latex = final_latex.replace(placeholder_to_find, content)
         else:
-            # This is an important warning for debugging
             print(f"⚠️ WARNING: Placeholder '{placeholder_to_find}' not found in the template. Skipping.")
             
     print("✅ Stitching complete.")
@@ -507,7 +472,7 @@ def refine_resume_view(request, resume_id: str):
 
     # Get the new instruction from the request
     new_instruction = request.POST.get('instruction')
-    job_description = request.POST.get('job_description') # We might need this for context
+    job_description = request.POST.get('job_description')
 
     if not new_instruction:
         return JsonResponse({'error': 'An instruction is required.'}, status=400)
@@ -523,7 +488,6 @@ def refine_resume_view(request, resume_id: str):
         user_doc = user_ref.get()
 
         current_latex = base_resume_doc.to_dict().get('latexContent', '')
-        # Combine saved instructions with the new one for better context
         base_instructions = user_doc.to_dict().get('customInstructions', '')
         combined_instructions = f"{base_instructions}\n\nFurther refinement: {new_instruction}"
         
@@ -556,7 +520,6 @@ def refine_resume_view(request, resume_id: str):
 @csrf_exempt
 @firebase_auth_required
 def delete_resume_view(request, resume_id: str):
-    # This view should only respond to DELETE requests for correctness
     if request.method != 'DELETE':
         return JsonResponse({'error': 'Only DELETE method is allowed'}, status=405)
 
@@ -568,7 +531,6 @@ def delete_resume_view(request, resume_id: str):
         resume_doc = resume_ref.get()
 
         if not resume_doc.exists:
-            # It's good practice to return 404 if the resource doesn't exist
             return JsonResponse({'error': 'Resume not found'}, status=404)
 
         # CRITICAL SECURITY CHECK: Ensure the user owns this resume before deleting
@@ -623,11 +585,7 @@ def download_resume_tex_view(request, resume_id: str):
         print(f"An error occurred during TeX download: {e}")
         return JsonResponse({'error': 'An internal server error occurred.'}, status=500)
     
-# fns/views.py
 
-# ... (keep all your existing imports) ...
-
-# --- ADD THIS NEW VIEW ---
 @csrf_exempt
 @firebase_auth_required
 def rename_resume_view(request, resume_id: str):
@@ -637,7 +595,6 @@ def rename_resume_view(request, resume_id: str):
     user_uid = request.user_id
     db = firestore.client()
 
-    # Get the new name from the POST data
     new_name = request.POST.get('new_name', '').strip()
 
     if not new_name:

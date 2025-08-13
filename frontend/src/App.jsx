@@ -1,11 +1,10 @@
-// src/App.jsx (Updated)
+// src/App.jsx
 
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useEffect, useState } from 'react';
 import { Link, Navigate, Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
 import { auth } from './firebaseConfig';
 
-// Import all your page components
 import Dashboard from './Dashboard';
 import EditorPage from './EditorPage';
 import LoginPage from './LoginPage';
@@ -15,9 +14,7 @@ import UploadPage from './UploadPage';
 
 import './App.css';
 
-/**
- * A wrapper component to handle the main layout and routing logic.
- */
+
 const AppLayout = ({ user }) => {
     const location = useLocation();
     const showHeader = location.pathname !== '/login';

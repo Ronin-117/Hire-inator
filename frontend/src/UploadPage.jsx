@@ -1,9 +1,11 @@
-// src/UploadPage.jsx (Complete Code with Status in Buttons)
+// src/UploadPage.jsx
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { auth } from './firebaseConfig';
-import './UploadPage.css'; // Your existing styles will work great
+import './UploadPage.css';
+
+import config from "./config";
 
 const UploadPage = () => {
     // --- State for the PDF upload form ---
@@ -14,9 +16,6 @@ const UploadPage = () => {
     const [texFile, setTexFile] = useState(null);
     const [texResumeName, setTexResumeName] = useState('');
 
-    // --- Refactored state for status messages ---
-    // Tracks the status of each form independently.
-    // Possible statuses: 'idle', 'loading', 'success', 'error'
     const [formStatus, setFormStatus] = useState({
         pdf: { status: 'idle', message: '' },
         tex: { status: 'idle', message: '' },
@@ -45,7 +44,7 @@ const UploadPage = () => {
             formData.append('resume_pdf', pdfFile);
             formData.append('resume_name', pdfResumeName);
             
-            const response = await fetch('http://127.0.0.1:8000/api/upload-resume/', {
+            const response = await fetch( `${config.API_BASE_URL}/api/upload-resume/`, {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + token },
                 body: formData,
@@ -91,7 +90,7 @@ const UploadPage = () => {
             formData.append('resume_tex', texFile);
             formData.append('resume_name', texResumeName);
 
-            const response = await fetch('http://127.0.0.1:8000/api/upload-tex/', {
+            const response = await fetch(`${config.API_BASE_URL}/api/upload-tex/`, {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + token },
                 body: formData,
@@ -127,11 +126,11 @@ const UploadPage = () => {
                 break;
             case 'success':
                 text = 'Success!';
-                className += ' btn-success'; // We can add a success class
+                className += ' btn-success';
                 break;
             case 'error':
                 text = 'Error!';
-                className += ' btn-danger'; // And an error class
+                className += ' btn-danger'; 
                 break;
             default:
                 break;

@@ -1,13 +1,14 @@
-// src/TailorPage.jsx (Styled Version)
+// src/TailorPage.jsx
 
 import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
-import { useEffect, useState } from 'react'; // <-- Import React
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { auth, db } from './firebaseConfig';
-import './TailorPage.css'; // <-- Import the new stylesheet
+import './TailorPage.css';
+
+import config from "./config";
 
 const TailorPage = () => {
-    // --- YOUR EXACT WORKING LOGIC - UNCHANGED ---
     const navigate = useNavigate();
     const [resumes, setResumes] = useState([]);
     const [selectedResumeId, setSelectedResumeId] = useState('');
@@ -57,7 +58,7 @@ const TailorPage = () => {
             formData.append('base_resume_id', selectedResumeId);
             formData.append('job_description', jobDescription);
             formData.append('new_resume_name', newResumeName);
-            const response = await fetch('http://127.0.0.1:8000/api/tailor-resume/', {
+            const response = await fetch(`${config.API_BASE_URL}/api/tailor-resume/`, {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + token },
                 body: formData,
@@ -75,11 +76,9 @@ const TailorPage = () => {
             setProcessing(false);
         }
     };
-    // --- END OF YOUR WORKING LOGIC ---
 
     if (loading) return <h1 className="tailor-header">Loading your resumes...</h1>;
 
-    // --- NEW STYLED JSX ---
     return (
         <div className="tailor-container">
             <Link to="/">← Back to Dashboard</Link>

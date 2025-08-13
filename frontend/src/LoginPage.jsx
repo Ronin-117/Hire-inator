@@ -1,4 +1,4 @@
-// src/LoginPage.jsx (Corrected)
+// src/LoginPage.jsx
 
 import {
     createUserWithEmailAndPassword,
@@ -7,7 +7,7 @@ import {
 } from "firebase/auth";
 import { useState } from 'react';
 import { auth, googleProvider } from './firebaseConfig';
-import './LoginPage.css'; // Import the styles
+import './LoginPage.css';
 
 const LoginPage = () => {
     const [email, setEmail] = useState('');
@@ -16,7 +16,7 @@ const LoginPage = () => {
 
     // --- Firebase logic handlers ---
     const handleEmailPasswordSignUp = async (e) => {
-        e.preventDefault(); // Prevent form submission
+        e.preventDefault(); 
         setError(null);
         try {
             await createUserWithEmailAndPassword(auth, email, password);
@@ -26,7 +26,7 @@ const LoginPage = () => {
     };
 
     const handleEmailPasswordLogin = async (e) => {
-        e.preventDefault(); // Prevent form submission
+        e.preventDefault(); 
         setError(null);
         try {
             await signInWithEmailAndPassword(auth, email, password);
@@ -58,7 +58,6 @@ const LoginPage = () => {
             <div className="login-container">
                 <h2>Hire-inator</h2>
                 
-                {/* We use a <form> element for better accessibility */}
                 <form onSubmit={handleEmailPasswordLogin}>
                     <div className="input-group">
                         <input
@@ -75,9 +74,7 @@ const LoginPage = () => {
                             className="input-field"
                             type="password"
                             value={password}
-                            // --- THIS IS THE CRITICAL FIX ---
                             onChange={(e) => setPassword(e.target.value)}
-                            // --- WAS: e.targe.value ---
                             placeholder="Password"
                             required
                         />

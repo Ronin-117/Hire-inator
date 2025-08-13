@@ -1,16 +1,14 @@
-// src/ProfilePage.jsx (Your Full Logic + New Styles)
+// src/ProfilePage.jsx
 
 import { collection, doc, getDoc, getDocs, orderBy, query, setDoc, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { auth, db } from './firebaseConfig';
-import './ProfilePage.css'; // Import the stylesheet
+import './ProfilePage.css';
+
+import config from "./config";
 
 const ProfilePage = () => {
-    // --- YOUR EXACT STATE AND LOGIC ---
-    // This is the complete, line-for-line logic from your working version.
-    // It has not been condensed or changed.
-
     // --- UI State ---
     const [isEditing, setIsEditing] = useState(false);
     const [loadingProfile, setLoadingProfile] = useState(true);
@@ -72,7 +70,7 @@ const ProfilePage = () => {
         fetchResumes();
     }, []);
 
-    // --- Event Handlers (Full, working versions) ---
+    // --- Event Handlers ---
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -106,7 +104,7 @@ const ProfilePage = () => {
         setError(null);
         try {
             const token = await auth.currentUser.getIdToken();
-            const response = await fetch(`http://127.0.0.1:8000/api/resumes/${resumeId}/download/`, {
+            const response = await fetch(`${config.API_BASE_URL}/api/resumes/${resumeId}/download/`, {
                 method: 'GET',
                 headers: { 'Authorization': 'Bearer ' + token },
             });
@@ -136,7 +134,7 @@ const ProfilePage = () => {
         setError(null);
         try {
             const token = await auth.currentUser.getIdToken();
-            const response = await fetch(`http://127.0.0.1:8000/api/resumes/${resumeId}/download-tex/`, {
+            const response = await fetch(`${config.API_BASE_URL}/api/resumes/${resumeId}/download-tex/`, {
                 headers: { 'Authorization': 'Bearer ' + token },
             });
             if (!response.ok) {
@@ -167,7 +165,7 @@ const ProfilePage = () => {
         setError(null);
         try {
             const token = await auth.currentUser.getIdToken();
-            const response = await fetch(`http://127.0.0.1:8000/api/resumes/${resumeId}/delete/`, {
+            const response = await fetch(`${config.API_BASE_URL}/api/resumes/${resumeId}/delete/`, {
                 method: 'DELETE',
                 headers: { 'Authorization': 'Bearer ' + token },
             });
@@ -182,12 +180,10 @@ const ProfilePage = () => {
             setError(err.message);
         }
     };
-    // --- END OF YOUR WORKING LOGIC ---
 
     const isLoading = loadingProfile || loadingResumes;
     if (isLoading) return <h1 className="profile-header">Loading Profile...</h1>;
 
-    // --- STYLED JSX ---
     return (
         <div className="profile-container">
             <Link to="/">← Back to Dashboard</Link>

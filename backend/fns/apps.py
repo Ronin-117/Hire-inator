@@ -11,7 +11,6 @@ class FnsConfig(AppConfig):
     name = 'fns'
 
     def ready(self):
-        # We still need to initialize Firebase for the admin SDK to work
         if not firebase_admin._apps:
             key_path = os.path.join(settings.BASE_DIR, 'serviceAccountKey.json')
             cred = credentials.Certificate(key_path)

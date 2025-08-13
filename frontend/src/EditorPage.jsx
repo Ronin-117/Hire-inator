@@ -1,12 +1,14 @@
-// src/EditorPage.jsx (Styled Version)
+// src/EditorPage.jsx
 
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import './EditorPage.css'; // <-- Import the new stylesheet
+import './EditorPage.css';
 import { auth } from './firebaseConfig';
 
+import config from "./config";
+
 const EditorPage = () => {
-    // --- YOUR EXACT WORKING LOGIC - UNCHANGED ---
+
     const { resumeId } = useParams();
     const [resumeData, setResumeData] = useState(null);
     const [pdfUrl, setPdfUrl] = useState('');
@@ -19,12 +21,12 @@ const EditorPage = () => {
         if (!auth.currentUser) return;
         try {
             const token = await auth.currentUser.getIdToken();
-            const response = await fetch(`http://127.0.0.1:8000/api/resumes/${resumeId}/download/`, {
+            const response = await fetch(`${config.API_BASE_URL}/api/resumes/${resumeId}/download/`, {
                 headers: { 'Authorization': 'Bearer ' + token }
             });
             if (!response.ok) throw new Error('Failed to compile and fetch PDF.');
             const blob = await response.blob();
-            // Clean up old URL to prevent memory leaks
+
             if (pdfUrl) {
                 window.URL.revokeObjectURL(pdfUrl);
             }
@@ -83,7 +85,6 @@ const EditorPage = () => {
             setIsRefining(false);
         }
     };
-    // --- END OF YOUR WORKING LOGIC ---
 
     if (isLoading) return <h1 className="editor-header">Generating Initial PDF Preview...</h1>;
 
