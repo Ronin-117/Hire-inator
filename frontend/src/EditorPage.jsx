@@ -44,7 +44,7 @@ const EditorPage = () => {
             setIsLoading(true);
             try {
                 const token = await auth.currentUser.getIdToken();
-                const response = await fetch(`http://127.0.0.1:8000/api/resumes/${resumeId}/`, {
+                const response = await fetch(`${config.API_BASE_URL}/api/resumes/${resumeId}/`, {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 if (!response.ok) throw new Error('Failed to fetch resume data.');
@@ -69,7 +69,7 @@ const EditorPage = () => {
             const formData = new FormData();
             formData.append('instruction', chatInput);
             formData.append('job_description', resumeData.jobDescription || '');
-            const response = await fetch(`http://127.0.0.1:8000/api/resumes/${resumeId}/refine/`, {
+            const response = await fetch(`${config.API_BASE_URL}/api/resumes/${resumeId}/refine/`, {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + token },
                 body: formData,

@@ -77,8 +77,8 @@
 
 .profile-container .btn-secondary {
   background-color: var(--card-bg);
-  color: var(--light-gray);
-  border: 1px solid var(--accent-brown);
+  color: var(--black);
+  border: 1px solid var(--black);
 }
 
 .profile-container .btn-danger {
